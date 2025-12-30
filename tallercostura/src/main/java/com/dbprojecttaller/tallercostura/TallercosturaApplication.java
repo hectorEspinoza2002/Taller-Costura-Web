@@ -8,6 +8,9 @@ public class TallercosturaApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(TallercosturaApplication.class, args);
+
+		System.out.println("< ===== Funciona! ===== >");
+
 	}
 
 }
