@@ -10,21 +10,22 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 
-@Table(name = "rol")
+@Table(name = "estado_usuario")
 @Entity
 @Data
-public class Rol {
+public class EstadoUsuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
 
-    @Column(name = "id_rol")
+    @Column(name = "id_estado")
     private Integer id;
 
-    @Column(name = "nombre_rol")
+    @Column(name = "nombre_estado")
     private String nombre;
 
     @Column(name = "creado_en")
     private LocalDate fechaCreacion;
+
 
 }
