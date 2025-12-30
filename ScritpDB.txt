@@ -1,0 +1,185 @@
+-- ============================
+--  CONFIGURACIÓN / PARÁMETROS
+-- ============================
+-- Reemplaza TALLER_COSTURERIA_DB por el nombre de tu base de datos (ej: taller_costura)
+-- Charset y collation para soportar acentos/emoji
+CREATE DATABASE IF NOT EXISTS `TALLER_COSTURERIA_DB` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `TALLER_COSTURERIA_DB`;
+
+-- ============================
+-- TABLAS DE CATÁLOGO / PARAMETRIZACIÓN
+-- ============================
+-- Roles (admin, empleado, etc.)
+CREATE TABLE IF NOT EXISTS rol (
+  id_rol TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre_rol VARCHAR(30) NOT NULL UNIQUE,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO rol (id_rol, nombre_rol) VALUES
+(1,'admin'),
+(2,'empleado');
+
+-- Métodos de pago (opcional)
+CREATE TABLE IF NOT EXISTS metodo_pago (
+  id_metodo TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre_metodo VARCHAR(50) NOT NULL UNIQUE,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO metodo_pago (id_metodo, nombre_metodo) VALUES
+(1,'Efectivo'),
+(2,'Transferencia / Depósito'),
+(3,'Otro');
+
+-- Estados de la prenda/orden
+CREATE TABLE IF NOT EXISTS estado_pedido (
+  id_estado TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre_estado VARCHAR(50) NOT NULL UNIQUE,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO estado_pedido (id_estado, nombre_estado) VALUES
+(1,'Recibida'),
+(2,'Entregada'),
+(3,'Cancelada');
+
+-- Tipos de servicio (por ejemplo: arreglo, confección, dobladillo, etc.)
+CREATE TABLE IF NOT EXISTS tipo_servicio (
+  id_servicio TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre_servicio VARCHAR(80) NOT NULL UNIQUE,
+  precio DECIMAL(10,2) DEFAULT NULL,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO tipo_servicio (nombre_servicio, precio) VALUES
+('Arreglo general', NULL),
+('Dobladillo', 5.00),
+('Remplazo cierre', 8.00),
+('Confección a medida', NULL),
+('Otros', NULL);
+
+CREATE TABLE IF NOT EXISTS estado_usuario(
+id_estado INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+nombre_estado VARCHAR(50) NOT NULL UNIQUE,
+creado_en TIMESTAMP DEFAULT current_timestamp
+);
+
+INSERT IGNORE INTO estado_usuario(nombre_estado) VALUES
+('Activo'), ('Baja');
+
+select * from estado_usuario;
+
+-- ============================
+-- USUARIOS (admins y empleados)
+-- ============================
+CREATE TABLE IF NOT EXISTS usuario (
+  id_user INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL, -- guarda hash (bcrypt/scrypt/argon2) desde la app
+  nombre VARCHAR(50) NOT NULL,
+  apellido VARCHAR(50) NOT NULL,
+  id_rol TINYINT UNSIGNED NOT NULL,
+  telefono VARCHAR(30),
+  email VARCHAR(100),
+  estado_usuario TINYINT(1) DEFAULT 1,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_rol) REFERENCES rol(id_rol)
+) ENGINE=InnoDB;
+
+-- Ejemplo: ojo, password aquí es sólo ejemplo; genera hashes en la app.
+INSERT IGNORE INTO usuario (id_user, username, password, nombre, apellido, id_rol) VALUES
+(1,'vespinozai','vero1234','Veronica', 'Espinoza','1');
+
+select * from usuario;
+
+-- ============================
+-- CLIENTES / PERSONAS QUE DEJAN PRENDAS
+-- ============================
+CREATE TABLE IF NOT EXISTS cliente (
+  id_cliente INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  apellido VARCHAR(100) NOT NULL,
+  telefono VARCHAR(40),
+  email VARCHAR(100),
+  nota varchar(500),
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ============================
+-- ÓRDENES / PRENDAS
+-- ============================
+-- Cada registro representa una prenda / pedido dejado por un cliente.
+CREATE TABLE IF NOT EXISTS orden (
+  id_orden BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id_cliente INT UNSIGNED NOT NULL,
+  id_received_by INT UNSIGNED NULL, -- empleado que recibió la prenda
+  id_assigned_to INT UNSIGNED NULL, -- empleado asignado (si aplica)
+  id_estado TINYINT UNSIGNED NOT NULL DEFAULT 1, -- estado (FK order_status)
+  description TEXT, -- detalle que el cliente dejó (detalle del trabajo)
+  service_notes TEXT, -- notas internas del taller
+  deposit DECIMAL(12,2) DEFAULT 0.00, -- abono inicial al recibir
+  estimated_price DECIMAL(12,2) DEFAULT NULL, -- presupuesto / precio total estimado
+  delivery_date DATE NULL, -- fecha acordada de entrega
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_cliente) REFERENCES cliente(id_cliente)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_received_by) REFERENCES usuario(id_user)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (id_assigned_to) REFERENCES usuario(id_user)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (id_estado) REFERENCES estado_pedido(id_estado)
+) ENGINE=InnoDB;
+
+select * from orden;
+
+-- Items de servicio por orden (opcional si quieres desglosar)
+CREATE TABLE IF NOT EXISTS order_items (
+  id_item BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id_orden BIGINT UNSIGNED NOT NULL,
+  id_servicio TINYINT UNSIGNED NULL,
+  descripcion VARCHAR(255) NULL,
+  cantidad INT UNSIGNED DEFAULT 1,
+  precio_unitario DECIMAL(12,2) DEFAULT NULL,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_orden) REFERENCES orden(id_orden),
+  FOREIGN KEY (id_servicio) REFERENCES tipo_servicio(id_servicio)
+) ENGINE=InnoDB;
+
+-- ============================
+-- PAGOS
+-- ============================
+CREATE TABLE IF NOT EXISTS pagos (
+  id_pago BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id_orden BIGINT UNSIGNED NOT NULL,
+  id_metodo TINYINT UNSIGNED NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  paid_by VARCHAR(150) NULL, -- nombre de quien pagó (cliente u otra persona)
+  payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  reference VARCHAR(100) NULL, -- referencia de transferencia, ticket, etc.
+  note VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_orden) REFERENCES orden(id_orden)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_metodo) REFERENCES metodo_pago(id_metodo)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+
+show tables;
+
+select * from cliente;
+select * from estado_pedido;
+select * from estado_usuario;
+select * from metodo_pago;
+select * from orden;
+select * from order_items;
+select * from pagos;
+select * from rol;
+select * from tipo_servicio;
+select * from usuario;
+
+desc order_items;
+desc orden;

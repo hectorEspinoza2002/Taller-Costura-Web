@@ -4,30 +4,22 @@ import java.time.LocalDate;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
 
-@Table(name = "usuario")
+@Table(name = "cliente")
 @Entity
 @Data
-public class Usuario {
+public class Cliente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_user")
-    private String id;
 
-    @Column(name = "usernmae")
-    private String usuario;
-
-    @Column(name = "password")
-    private String password;
+    @Column(name = "id_cliente")
+    private Integer id;
 
     @Column(name = "nombre")
     private String nombre;
@@ -35,28 +27,16 @@ public class Usuario {
     @Column(name = "apellido")
     private String apellido;
 
-    
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_rol")
-    private Rol rol;
-
     @Column(name = "telefono")
     private String telefono;
 
     @Column(name = "email")
     private String email;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "estado_usuario")
-    private EstadoUsuario estado;
+    @Column(name = "nota")
+    private String nota;
 
     @Column(name = "creado_en")
     private LocalDate fechaCreacion;
 
-    @Column(name = "actualizado_en")
-    private LocalDate fechaActualizacion;
-
-
-
 }
-
